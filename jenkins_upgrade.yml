@@ -1,0 +1,35 @@
+- hosts: all
+  remote_user: ubuntu
+  become: yes
+  tasks:
+    - name: Backup Jenkins home directory
+      ansible.builtin.archive:
+        path: /var/lib/jenkins
+        dest: /home/ubuntu/jenkins_backup_{{ ansible_date_time.iso8601 }}.tar.gz
+        format: gz
+
+    - name: Download Jenkins GPG key                                                #https://www.rosehosting.com/blog/how-to-install-jenkins-on-ubuntu-24-04/
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+        mode: '0644'
+
+    - name: Add Jenkins repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        filename: "jenkins"
+        state: present
+
+    - name: Install Java and Jenkins
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - default-jdk                   # For latest version of Java
+        - jenkins                       # For the latest version of Jenkins          jenkins=2.361.1  (for specific version)    
+
+    - name: Start and enable Jenkins service
+      ansible.builtin.service:
+        name: jenkins
+        state: started
+        enabled: yes
